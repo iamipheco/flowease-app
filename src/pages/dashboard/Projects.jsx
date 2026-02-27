@@ -1,25 +1,33 @@
-import { useState } from 'react';
-import { Plus, Grid3x3, List, Search } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { useProjects } from '../../hooks/useProjects';
-import { useWorkspaceStore } from '../../store/workspaceStore';
-import ProjectCard from '../../components/projects/ProjectCard';
-import CreateProjectModal from '../../components/projects/CreateProjectModal';
+/* ======================================================
+   src/pages/dashboard/Projects.jsx
+   Projects Board View - Asana Style
+====================================================== */
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Plus, Search, LayoutGrid, List, Filter, MoreHorizontal } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useProjects } from "../../hooks/useProjects";
+import { useWorkspaceStore } from "../../store/workspaceStore";
+import ProjectCard from "../../components/projects/ProjectCard";
+import CreateProjectModal from "../../components/projects/CreateProjectModal";
 
 const Projects = () => {
+  const navigate = useNavigate();
+  const [viewMode, setViewMode] = useState("board");
+  const [searchQuery, setSearchQuery] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [viewMode, setViewMode] = useState('grid'); // grid or list
-  const [searchQuery, setSearchQuery] = useState('');
 
   const { activeWorkspace } = useWorkspaceStore();
-  const { projects, isLoading, createProject, deleteProject, isCreating } = useProjects();
+  const { projects, isLoading, createProject, updateProject, deleteProject } = useProjects();
+
+  const handleProjectClick = (project) => {
+    // ✨ Navigate to project detail page instead of opening sidebar
+    navigate(`/dashboard/projects/${project._id}`);
+  };
 
   const handleCreateProject = (data) => {
     createProject(
-      {
-        ...data,
-        workspace: activeWorkspace._id,
-      },
+      { ...data, workspace: activeWorkspace._id },
       {
         onSuccess: () => {
           setShowCreateModal(false);
@@ -28,29 +36,35 @@ const Projects = () => {
     );
   };
 
-  const handleEditProject = (project) => {
-    // TODO: Open edit modal with project data
-    console.log('Edit project:', project);
+  // Filter projects
+  const filteredProjects = projects.filter((project) =>
+    project.name?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Group by status for board view
+  const projectsByStatus = {
+    active: filteredProjects.filter((p) => p.status === "active"),
+    "on-hold": filteredProjects.filter((p) => p.status === "on-hold"),
+    completed: filteredProjects.filter((p) => p.status === "completed"),
   };
 
-  // Filter projects by search query
-  const filteredProjects = Array.isArray(projects) 
-    ? projects.filter((project) =>
-        project?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        project?.description?.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : [];
+  const statusColumns = [
+    { key: "active", label: "Active", color: "border-primary" },
+    { key: "on-hold", label: "On Hold", color: "border-warning" },
+    { key: "completed", label: "Completed", color: "border-success" },
+  ];
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-display font-bold text-dark-text mb-2">
             Projects
           </h1>
           <p className="text-dark-muted">
-            {activeWorkspace?.name} • {projects.length} project{projects.length !== 1 ? 's' : ''}
+            {activeWorkspace?.name} • {projects.length} project
+            {projects.length !== 1 ? "s" : ""}
           </p>
         </div>
 
@@ -64,45 +78,50 @@ const Projects = () => {
       </div>
 
       {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        {/* Search */}
-        <div className="relative flex-1 max-w-md w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-muted" />
+      <div className="flex items-center justify-between gap-4">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-muted pointer-events-none z-10" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search projects..."
-            className="input pl-10 w-full"
+            className="input input-with-icon-left w-full"
           />
         </div>
 
-        {/* View Toggle */}
-        <div className="flex items-center gap-2 bg-dark-bg2 border border-dark-border rounded-lg p-1">
-          <button
-            onClick={() => setViewMode('grid')}
-            className={`p-2 rounded transition-colors ${
-              viewMode === 'grid'
-                ? 'bg-primary text-white'
-                : 'text-dark-muted hover:text-dark-text'
-            }`}
-          >
-            <Grid3x3 className="w-4 h-4" />
+        <div className="flex items-center gap-2">
+          <button className="btn btn-secondary btn-sm">
+            <Filter className="w-4 h-4" />
+            Filter
           </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`p-2 rounded transition-colors ${
-              viewMode === 'list'
-                ? 'bg-primary text-white'
-                : 'text-dark-muted hover:text-dark-text'
-            }`}
-          >
-            <List className="w-4 h-4" />
-          </button>
+
+          <div className="flex items-center gap-1 bg-dark-bg2 border border-dark-border rounded-lg p-1">
+            <button
+              onClick={() => setViewMode("board")}
+              className={`p-2 rounded transition-colors ${
+                viewMode === "board"
+                  ? "bg-primary text-white"
+                  : "text-dark-muted hover:text-dark-text"
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={`p-2 rounded transition-colors ${
+                viewMode === "list"
+                  ? "bg-primary text-white"
+                  : "text-dark-muted hover:text-dark-text"
+              }`}
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Projects Grid/List */}
+      {/* Content */}
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
           <div className="flex flex-col items-center gap-4">
@@ -110,47 +129,62 @@ const Projects = () => {
             <p className="text-sm text-dark-muted">Loading projects...</p>
           </div>
         </div>
-      ) : filteredProjects.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="w-20 h-20 rounded-full bg-dark-bg3 flex items-center justify-center mx-auto mb-4">
-            <Plus className="w-10 h-10 text-dark-muted" />
-          </div>
-          <h3 className="text-xl font-display font-bold text-dark-text mb-2">
-            {searchQuery ? 'No projects found' : 'No projects yet'}
-          </h3>
-          <p className="text-sm text-dark-muted mb-6">
-            {searchQuery
-              ? 'Try adjusting your search query'
-              : 'Create your first project to get started'}
-          </p>
-          {!searchQuery && (
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="btn btn-primary"
-            >
-              <Plus className="w-4 h-4" />
-              Create First Project
-            </button>
-          )}
+      ) : viewMode === "board" ? (
+        /* Board View - Kanban Style */
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {statusColumns.map((column) => (
+            <div key={column.key} className="space-y-4">
+              {/* Column Header */}
+              <div className={`border-l-4 ${column.color} pl-3 py-2`}>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-dark-text">
+                    {column.label}
+                  </h3>
+                  <span className="text-xs text-dark-muted">
+                    {projectsByStatus[column.key].length}
+                  </span>
+                </div>
+              </div>
+
+              {/* Projects */}
+              <div className="space-y-3">
+                <AnimatePresence>
+                  {projectsByStatus[column.key].map((project) => (
+                    <ProjectCard
+                      key={project._id}
+                      project={project}
+                      onClick={() => handleProjectClick(project)}
+                    />
+                  ))}
+                </AnimatePresence>
+
+                {projectsByStatus[column.key].length === 0 && (
+                  <div className="card text-center py-8">
+                    <p className="text-xs text-dark-muted">No projects</p>
+                  </div>
+                )}
+
+                <button className="w-full text-left px-4 py-2 text-sm text-dark-muted hover:bg-dark-bg2 rounded-lg transition-colors flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Add project
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
-        <motion.div
-          layout
-          className={
-            viewMode === 'grid'
-              ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
-              : 'space-y-4'
-          }
-        >
-          {filteredProjects.map((project) => (
-            <ProjectCard
-              key={project._id}
-              project={project}
-              onEdit={handleEditProject}
-              onDelete={deleteProject}
-            />
-          ))}
-        </motion.div>
+        /* List View */
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <AnimatePresence>
+            {filteredProjects.map((project) => (
+              <ProjectCard
+                key={project._id}
+                project={project}
+                onClick={() => handleProjectClick(project)}
+              />
+            ))}
+          </AnimatePresence>
+        </div>
       )}
 
       {/* Create Project Modal */}
@@ -158,7 +192,6 @@ const Projects = () => {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onSubmit={handleCreateProject}
-        isLoading={isCreating}
       />
     </div>
   );

@@ -7,7 +7,9 @@ import MyTasks from "../pages/dashboard/MyTasks";
 import Projects from "../pages/dashboard/Projects";
 import TimeTracking from "../pages/dashboard/TimeTracking";
 import { useAuthStore } from "../store/authStore";
-import NewProject from "../pages/dashboard/NewProject";
+import NewProject from "../components/projects/NewProject";
+import TimeReports from "../pages/dashboard/TimeReports";
+import ProjectDetail from "../pages/dashboard/ProjectDetail";
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
@@ -62,8 +64,10 @@ const AppRoutes = () => {
         <Route path="tasks" element={<MyTasks />} />
         <Route path="projects" element={<Projects />} />
         <Route path="projects/new" element={<NewProject />} />
+        <Route path="/dashboard/projects/:projectId" element={<ProjectDetail />} />
         <Route path="projects/:id" element={<div className="p-8">Project Details - Coming soon</div>} />
         <Route path="time" element={<TimeTracking />} />
+        <Route path="/dashboard/time/reports" element={<TimeReports />} />
         <Route path="team" element={<div className="p-8">Team page coming soon...</div>} />
         <Route path="notifications" element={<div className="p-8">Notifications coming soon...</div>} />
         <Route path="settings" element={<div className="p-8">Settings coming soon...</div>} />

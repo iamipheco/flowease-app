@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useProjects } from '../../hooks/useProjects';
 import { useWorkspaceStore } from '../../store/workspaceStore';
-import CreateProjectModal from '../../components/projects/CreateProjectModal';
+import CreateProjectModal from './CreateProjectModal';
 
 const NewProject = () => {
   const navigate = useNavigate();

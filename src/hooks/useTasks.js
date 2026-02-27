@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
 import { toast } from "sonner";
 import { tasksAPI } from "../api";
 import { useWorkspaceStore } from "../store/workspaceStore";
@@ -21,11 +20,9 @@ export const useTasks = () => {
     queryKey: ["tasks", activeWorkspace?._id],
     queryFn: async () => {
       if (!activeWorkspace?._id) return [];
-
       const response = await tasksAPI.getAll({
         workspace: activeWorkspace._id,
       });
-
       return Array.isArray(response.data) ? response.data : [];
     },
     enabled: !!activeWorkspace?._id,
@@ -33,17 +30,11 @@ export const useTasks = () => {
     gcTime: 10 * 60 * 1000,
   });
 
-  useEffect(() => {
-    if (activeWorkspace?._id) {
-      refetch();
-    }
-  }, [activeWorkspace?._id, refetch]);
-
   // ===============================
   // GET SINGLE TASK
   // ===============================
-  const useTask = (id) => {
-    return useQuery({
+  const useTask = (id) =>
+    useQuery({
       queryKey: ["task", id],
       queryFn: async () => {
         const response = await tasksAPI.getById(id);
@@ -52,7 +43,6 @@ export const useTasks = () => {
       enabled: !!id,
       retry: 1,
     });
-  };
 
   // ===============================
   // CREATE TASK
@@ -64,7 +54,6 @@ export const useTasks = () => {
         ...old,
         response.data,
       ]);
-
       queryClient.invalidateQueries({ queryKey: ["projectTasks"] });
       toast.success("Task created successfully");
     },
@@ -78,22 +67,30 @@ export const useTasks = () => {
   // ===============================
   const updateTaskMutation = useMutation({
     mutationFn: ({ id, data }) => tasksAPI.update(id, data),
-    onSuccess: (response) => {
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries(["tasks", activeWorkspace?._id]);
+      const previousTasks = queryClient.getQueryData([
+        "tasks",
+        activeWorkspace?._id,
+      ]);
       queryClient.setQueryData(["tasks", activeWorkspace?._id], (old = []) =>
-        old.map((task) =>
-          task._id === response.data._id ? response.data : task,
-        ),
+        old.map((task) => (task._id === id ? { ...task, ...data } : task)),
       );
-
-      queryClient.invalidateQueries({
-        queryKey: ["task", response.data._id],
-      });
-      queryClient.invalidateQueries({ queryKey: ["projectTasks"] });
-
-      toast.success("Task updated successfully");
+      return { previousTasks };
     },
-    onError: (error) => {
-      toast.error(error.response?.data?.message || "Failed to update task");
+    onError: (_err, _variables, context) => {
+      if (context?.previousTasks) {
+        queryClient.setQueryData(
+          ["tasks", activeWorkspace?._id],
+          context.previousTasks,
+        );
+      }
+      toast.error("Failed to update task");
+    },
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ["task", response.data._id] });
+      queryClient.invalidateQueries({ queryKey: ["projectTasks"] });
+      toast.success("Task updated successfully");
     },
   });
 
@@ -106,7 +103,6 @@ export const useTasks = () => {
       queryClient.setQueryData(["tasks", activeWorkspace?._id], (old = []) =>
         old.filter((task) => task._id !== taskId),
       );
-
       queryClient.invalidateQueries({ queryKey: ["projectTasks"] });
       toast.success("Task deleted successfully");
     },
@@ -116,47 +112,63 @@ export const useTasks = () => {
   });
 
   // ===============================
-  // ✅  COMPLETE TASK (TOGGLE)
+  // COMPLETE / REOPEN TASK (TOGGLE)
   // ===============================
   const completeTaskMutation = useMutation({
     mutationFn: async (taskId) => {
       const currentTasks =
         queryClient.getQueryData(["tasks", activeWorkspace?._id]) ?? [];
-
       const currentTask = currentTasks.find((t) => t._id === taskId);
-
-      if (!currentTask) {
-        throw new Error("Task not found");
-      }
+      if (!currentTask) throw new Error("Task not found");
 
       const newStatus =
-        currentTask.status === "completed"
-          ? "todo" // ✅ FIXED
-          : "completed";
-
-      return await tasksAPI.update(taskId, {
-        status: newStatus,
-      });
+        currentTask.status === "completed" ? "todo" : "completed";
+      return tasksAPI.update(taskId, { status: newStatus });
     },
 
-    onSuccess: (response) => {
+    // Optimistic UI update
+    onMutate: async (taskId) => {
+      await queryClient.cancelQueries(["tasks", activeWorkspace?._id]);
+      const previousTasks = queryClient.getQueryData([
+        "tasks",
+        activeWorkspace?._id,
+      ]);
+
+      let newStatus = "completed"; // default
       queryClient.setQueryData(["tasks", activeWorkspace?._id], (old = []) =>
-        old.map((task) =>
-          task._id === response.data._id ? response.data : task,
-        ),
+        old.map((task) => {
+          if (task._id === taskId) {
+            const updatedStatus =
+              task.status === "completed" ? "todo" : "completed";
+            newStatus = updatedStatus; // save for toast
+            return { ...task, status: updatedStatus };
+          }
+          return task;
+        }),
       );
 
+      return { previousTasks, newStatus };
+    },
+
+    onError: (_err, _taskId, context) => {
+      if (context?.previousTasks) {
+        queryClient.setQueryData(
+          ["tasks", activeWorkspace?._id],
+          context.previousTasks,
+        );
+      }
+      toast.error("Failed to update task");
+    },
+
+    onSuccess: (_response, _taskId, context) => {
       toast.success(
-        response.data.status === "completed"
+        context.newStatus === "completed"
           ? "Task Completed! 🎉"
           : "Task Re-opened",
       );
     },
-
-    onError: (error) => {
-      toast.error(error.response?.data?.message || "Failed to update task");
-    },
   });
+
   // ===============================
   // ASSIGN USERS
   // ===============================
@@ -164,10 +176,10 @@ export const useTasks = () => {
     mutationFn: ({ taskId, userIds }) =>
       tasksAPI.assignUsers(taskId, { userIds }),
     onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ["task", response.data._id] });
       queryClient.invalidateQueries({
-        queryKey: ["task", response.data._id],
+        queryKey: ["tasks", activeWorkspace?._id],
       });
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
       toast.success("Users assigned to task");
     },
     onError: (error) => {
@@ -181,9 +193,7 @@ export const useTasks = () => {
   const addCommentMutation = useMutation({
     mutationFn: ({ taskId, text }) => tasksAPI.addComment(taskId, { text }),
     onSuccess: (response) => {
-      queryClient.invalidateQueries({
-        queryKey: ["task", response.data._id],
-      });
+      queryClient.invalidateQueries({ queryKey: ["task", response.data._id] });
       toast.success("Comment added");
     },
     onError: (error) => {

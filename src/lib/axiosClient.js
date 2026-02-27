@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_URL } from '../utils/constants';
+import { useAuthStore } from '../store/authStore';
 
 const axiosClient = axios.create({
   baseURL: API_URL,
@@ -8,7 +9,6 @@ const axiosClient = axios.create({
   },
 });
 
-// Track if we're currently refreshing to avoid multiple refresh calls
 let isRefreshing = false;
 let failedQueue = [];
 
@@ -23,42 +23,35 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-// Request Interceptor - Add auth token
+// =========================
+// REQUEST INTERCEPTOR
+// =========================
 axiosClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('accessToken');
+    const token = useAuthStore.getState().token;
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('🔑 Token added to request:', config.url);
-    } else {
-      console.warn('⚠️ No token found for:', config.url);
     }
+
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response Interceptor - Handle token refresh
+// =========================
+// RESPONSE INTERCEPTOR
+// =========================
 axiosClient.interceptors.response.use(
-  (response) => {
-    console.log('✅ Response success:', response.config.url, response.status);
-    return response;
-  },
+  (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    console.error('❌ Request failed:', originalRequest.url, error.response?.status);
-
-    // If error is not 401 or already retried, reject immediately
     if (error.response?.status !== 401 || originalRequest._retry) {
       return Promise.reject(error);
     }
 
-    // If we're currently refreshing, queue this request
     if (isRefreshing) {
-      console.log('🔄 Queuing request during refresh:', originalRequest.url);
       return new Promise((resolve, reject) => {
         failedQueue.push({ resolve, reject });
       })
@@ -66,77 +59,50 @@ axiosClient.interceptors.response.use(
           originalRequest.headers.Authorization = `Bearer ${token}`;
           return axiosClient(originalRequest);
         })
-        .catch(err => {
-          return Promise.reject(err);
-        });
+        .catch(err => Promise.reject(err));
     }
 
     originalRequest._retry = true;
     isRefreshing = true;
 
-    const refreshToken = localStorage.getItem('refreshToken');
+    const refreshToken = useAuthStore.getState().refreshToken;
 
     if (!refreshToken) {
-      console.error('❌ No refresh token available');
+      useAuthStore.getState().logout();
       isRefreshing = false;
-      
-      // Clear everything and redirect to login
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('auth-storage');
-      window.location.href = '/login';
-      
       return Promise.reject(error);
     }
 
     try {
-      console.log('🔄 Attempting token refresh...');
-
-      // Make refresh request WITHOUT the interceptor to avoid infinite loop
       const response = await axios.post(
         `${API_URL}/auth/refresh`,
-        { refreshToken },
-        { baseURL: API_URL }
+        { refreshToken }
       );
 
       const { accessToken: newAccessToken } = response.data;
-      
-      console.log('✅ Token refreshed successfully');
 
-      // Store new token
-      localStorage.setItem('accessToken', newAccessToken);
+      // ✅ Update Zustand properly
+      const { user, refreshToken: storedRefresh } = useAuthStore.getState();
 
-      // Update auth store
-      const authStorage = JSON.parse(localStorage.getItem('auth-storage') || '{}');
-      if (authStorage.state) {
-        authStorage.state.token = newAccessToken;
-        localStorage.setItem('auth-storage', JSON.stringify(authStorage));
-      }
+      useAuthStore.getState().setAuth(
+        user,
+        newAccessToken,
+        storedRefresh
+      );
 
-      // Process queued requests
       processQueue(null, newAccessToken);
 
-      // Retry original request with new token
       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-      
       isRefreshing = false;
 
       return axiosClient(originalRequest);
 
     } catch (refreshError) {
-      console.error('❌ Token refresh failed:', refreshError);
-
-      // Process queue with error
       processQueue(refreshError, null);
-      
       isRefreshing = false;
 
-      // Clear everything and redirect to login
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('auth-storage');
-      
-      window.location.href = '/login';
+      // ✅ Proper logout (NO RELOAD)
+      useAuthStore.getState().logout();
 
       return Promise.reject(refreshError);
     }
