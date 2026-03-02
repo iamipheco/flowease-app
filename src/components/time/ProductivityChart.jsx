@@ -1,12 +1,15 @@
 /* ======================================================
    src/components/time/ProductivityChart.jsx
    Productivity Chart - Reactive & Backend-Synced
-====================================================== */
+===================================================== */
 import { useState, useMemo } from "react";
 import { cn } from "../../utils/cn";
 import { useTimeEntries } from "../../hooks/useTimeEntries";
 
-const ProductivityChart = () => {
+/**
+ * @param {string} height - Tailwind height class e.g. "h-48" or "h-[360px]"
+ */
+const ProductivityChart = ({ height = "h-48" }) => {
   const { timeEntries, isLoading } = useTimeEntries();
   const [viewMode, setViewMode] = useState("weekly"); // daily, weekly, monthly
 
@@ -14,10 +17,13 @@ const ProductivityChart = () => {
   // AGGREGATE DATA FOR CHART
   // =============================
   const chartData = useMemo(() => {
-    if (!timeEntries || timeEntries.length === 0) return [];
+    if (!timeEntries || timeEntries.length === 0) {
+      return { data: [], unit: "", maxValue: 0 };
+    }
 
     const today = new Date();
 
+    // ---- DAILY VIEW ----
     if (viewMode === "daily") {
       const hours = [];
       for (let i = 23; i >= 0; i--) {
@@ -32,7 +38,10 @@ const ProductivityChart = () => {
           );
         });
 
-        const minutes = hourEntries.reduce((acc, entry) => acc + (entry.duration || 0) / 60, 0);
+        const minutes = hourEntries.reduce(
+          (acc, entry) => acc + (entry.duration || 0) / 60,
+          0
+        );
 
         hours.push({
           label:
@@ -47,21 +56,27 @@ const ProductivityChart = () => {
           isCurrent: hour.getHours() === today.getHours(),
         });
       }
-      return { data: hours, unit: "min", maxValue: Math.max(...hours.map((h) => h.value), 60) };
+
+      return {
+        data: hours,
+        unit: "min",
+        maxValue: Math.max(...hours.map((h) => h.value), 60),
+      };
     }
 
+    // ---- WEEKLY VIEW ----
     if (viewMode === "weekly") {
       const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
       const weekData = [];
+
       for (let i = 6; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(today.getDate() - i);
         date.setHours(0, 0, 0, 0);
 
-        const dayEntries = timeEntries.filter((entry) => {
-          const entryDate = new Date(entry.startTime);
-          return entryDate.toDateString() === date.toDateString();
-        });
+        const dayEntries = timeEntries.filter(
+          (entry) => new Date(entry.startTime).toDateString() === date.toDateString()
+        );
 
         const hours = dayEntries.reduce((acc, entry) => acc + (entry.duration || 0) / 3600, 0);
 
@@ -71,20 +86,26 @@ const ProductivityChart = () => {
           isCurrent: date.toDateString() === today.toDateString(),
         });
       }
-      return { data: weekData, unit: "h", maxValue: Math.max(...weekData.map((d) => d.value), 8) };
+
+      return {
+        data: weekData,
+        unit: "h",
+        maxValue: Math.max(...weekData.map((d) => d.value), 8),
+      };
     }
 
+    // ---- MONTHLY VIEW ----
     if (viewMode === "monthly") {
       const monthData = [];
+
       for (let i = 29; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(today.getDate() - i);
         date.setHours(0, 0, 0, 0);
 
-        const dayEntries = timeEntries.filter((entry) => {
-          const entryDate = new Date(entry.startTime);
-          return entryDate.toDateString() === date.toDateString();
-        });
+        const dayEntries = timeEntries.filter(
+          (entry) => new Date(entry.startTime).toDateString() === date.toDateString()
+        );
 
         const hours = dayEntries.reduce((acc, entry) => acc + (entry.duration || 0) / 3600, 0);
 
@@ -94,22 +115,27 @@ const ProductivityChart = () => {
           isCurrent: date.toDateString() === today.toDateString(),
         });
       }
-      return { data: monthData, unit: "h", maxValue: Math.max(...monthData.map((d) => d.value), 40) };
+
+      return {
+        data: monthData,
+        unit: "h",
+        maxValue: Math.max(...monthData.map((d) => d.value), 40),
+      };
     }
 
-    return [];
+    // ---- DEFAULT FALLBACK ----
+    return { data: [], unit: "", maxValue: 0 };
   }, [timeEntries, viewMode]);
 
   // =============================
   // RENDER
   // =============================
   return (
-    <div className="card">
+    <div className="card flex flex-col h-full">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-lg font-semibold text-dark-text mb-1">
-            Productivity
-          </h2>
+          <h2 className="text-lg font-semibold text-dark-text mb-1">Productivity</h2>
           <p className="text-sm text-dark-muted capitalize">{viewMode} overview</p>
         </div>
 
@@ -132,17 +158,32 @@ const ProductivityChart = () => {
         </div>
       </div>
 
-      <div className="h-48 flex items-end justify-between gap-1 sm:gap-2 md:gap-4 overflow-x-auto">
+      {/* Chart */}
+      <div
+        className={cn(
+          height,
+          "flex items-end justify-between gap-1 sm:gap-2 md:gap-4 overflow-x-auto"
+        )}
+      >
         {isLoading ? (
           <div className="flex-1 text-center text-dark-muted text-sm py-6">Loading...</div>
+        ) : chartData.data.length === 0 ? (
+          <div className="flex-1 text-center text-dark-muted text-sm py-6">
+            No data to display
+          </div>
         ) : (
           chartData.data.map((item, index) => {
-            const heightPercent = (item.value / chartData.maxValue) * 100;
+            const heightPercent = chartData.maxValue
+              ? (item.value / chartData.maxValue) * 100
+              : 0;
 
             return (
-              <div key={index} className="flex-1 min-w-[30px] sm:min-w-[40px] flex flex-col items-center gap-2">
+              <div
+                key={index}
+                className="flex-1 min-w-[30px] sm:min-w-[40px] flex flex-col items-center gap-2"
+              >
                 {/* Bar */}
-                <div className="w-full bg-dark-bg3 rounded-t-lg overflow-hidden flex flex-col justify-end h-40">
+                <div className="w-full bg-dark-bg3 rounded-t-lg overflow-hidden flex flex-col justify-end h-full">
                   <div
                     className={cn(
                       "w-full rounded-t-lg transition-all duration-300",
@@ -152,21 +193,27 @@ const ProductivityChart = () => {
                         ? "bg-gradient-to-t from-warning to-warning/70"
                         : "bg-dark-border"
                     )}
-                    style={{ height: `${heightPercent}%`, minHeight: item.value > 0 ? "4px" : "0" }}
+                    style={{
+                      height: `${heightPercent}%`,
+                      minHeight: item.value > 0 ? "4px" : "0",
+                    }}
                   />
                 </div>
 
                 {/* Label */}
                 <div className="text-center">
-                  <div className={cn(
-                    "text-[10px] sm:text-xs font-medium",
-                    item.isCurrent ? "text-primary" : "text-dark-muted"
-                  )}>
+                  <div
+                    className={cn(
+                      "text-[10px] sm:text-xs font-medium",
+                      item.isCurrent ? "text-primary" : "text-dark-muted"
+                    )}
+                  >
                     {item.label}
                   </div>
                   {item.value > 0 && (
                     <div className="text-[10px] sm:text-xs text-dark-muted mt-0.5">
-                      {item.value}{chartData.unit}
+                      {item.value}
+                      {chartData.unit}
                     </div>
                   )}
                 </div>

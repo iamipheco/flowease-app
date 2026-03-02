@@ -61,16 +61,16 @@ const authAPI = {
   },
 
   // POST /auth/reset-password - Reset password with token
-  resetPassword: async (data) => {
-    const response = await axiosClient.post('/auth/reset-password', data);
-    return response;
-  },
+  resetPassword: async ({ token, password }) => {
+  const response = await axiosClient.put(`/auth/reset-password/${token}`, { newPassword: password });
+  return response;
+},
+  // GET /auth/verify-email - Verify email with token
 
-  // POST /auth/verify-email - Verify email with token
   verifyEmail: async (token) => {
-    const response = await axiosClient.post('/auth/verify-email', { token });
-    return response;
-  },
+  const response = await axiosClient.get(`/auth/verify-email/${token}`);
+  return response.data;
+},
 
   // POST /auth/resend-verification - Resend verification email
   resendVerification: async (email) => {

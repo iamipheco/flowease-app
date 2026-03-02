@@ -1,45 +1,56 @@
 import { useMemo } from "react";
-import { Clock, DollarSign, TrendingUp, Target, Zap, Calendar } from "lucide-react";
+import {
+  Clock,
+  DollarSign,
+  TrendingUp,
+  Target,
+  Zap,
+  Calendar,
+} from "lucide-react";
 import { motion } from "framer-motion";
 
-const ReportSummary = ({ entries }) => {
+/* ======================================================
+   ReportSummary - Modern Dashboard Cards
+   Accepts `entries` from API
+====================================================== */
+const ReportSummary = ({ entries = [] }) => {
+  /* =============================
+     Compute Stats
+  ============================ */
   const stats = useMemo(() => {
-    const totalSeconds = entries.reduce((sum, entry) => sum + (entry.duration || 0), 0);
+    const totalSeconds = entries.reduce((sum, e) => sum + (e.duration || 0), 0);
     const totalHours = totalSeconds / 3600;
 
     const billableEntries = entries.filter((e) => e.isBillable);
-    const billableSeconds = billableEntries.reduce((sum, entry) => sum + (entry.duration || 0), 0);
-    const billableHours = billableSeconds / 3600;
+    const billableHours =
+      billableEntries.reduce((sum, e) => sum + (e.duration || 0), 0) / 3600;
     const nonBillableHours = totalHours - billableHours;
 
-    const totalEarnings = entries.reduce((sum, entry) => {
-      if (!entry.isBillable) return sum;
-      const hours = (entry.duration || 0) / 3600;
-      const rate = entry.hourlyRate || 0;
+    const totalEarnings = entries.reduce((sum, e) => {
+      if (!e.isBillable) return sum;
+      const hours = (e.duration || 0) / 3600;
+      const rate = e.hourlyRate || 0;
       return sum + hours * rate;
     }, 0);
 
-    // Average hours per day
     const daysWithEntries = new Set(
       entries.map((e) => new Date(e.startTime).toDateString())
     ).size;
-    const avgHoursPerDay = daysWithEntries > 0 ? totalHours / daysWithEntries : 0;
+    const avgHoursPerDay = daysWithEntries ? totalHours / daysWithEntries : 0;
 
-    // Most productive day
     const dayHours = {};
-    entries.forEach((entry) => {
-      const day = new Date(entry.startTime).toLocaleDateString("en-US", { weekday: "long" });
-      const hours = (entry.duration || 0) / 3600;
-      dayHours[day] = (dayHours[day] || 0) + hours;
+    entries.forEach((e) => {
+      const day = new Date(e.startTime).toLocaleDateString("en-US", {
+        weekday: "long",
+      });
+      dayHours[day] = (dayHours[day] || 0) + (e.duration || 0) / 3600;
     });
     const mostProductiveDay = Object.entries(dayHours).sort((a, b) => b[1] - a[1])[0];
 
-    // Most worked project
     const projectHours = {};
-    entries.forEach((entry) => {
-      const project = entry.task?.project?.name || entry.project?.name || "No Project";
-      const hours = (entry.duration || 0) / 3600;
-      projectHours[project] = (projectHours[project] || 0) + hours;
+    entries.forEach((e) => {
+      const project = e.task?.project?.name || e.project?.name || "No Project";
+      projectHours[project] = (projectHours[project] || 0) + (e.duration || 0) / 3600;
     });
     const topProject = Object.entries(projectHours).sort((a, b) => b[1] - a[1])[0];
 
@@ -50,11 +61,18 @@ const ReportSummary = ({ entries }) => {
       totalEarnings: Math.round(totalEarnings * 100) / 100,
       avgHoursPerDay: Math.round(avgHoursPerDay * 10) / 10,
       sessionCount: entries.length,
-      mostProductiveDay: mostProductiveDay ? `${mostProductiveDay[0]} (${Math.round(mostProductiveDay[1] * 10) / 10}h)` : "N/A",
-      topProject: topProject ? `${topProject[0]} (${Math.round(topProject[1] * 10) / 10}h)` : "N/A",
+      mostProductiveDay: mostProductiveDay
+        ? `${mostProductiveDay[0]} (${Math.round(mostProductiveDay[1] * 10) / 10}h)`
+        : "N/A",
+      topProject: topProject
+        ? `${topProject[0]} (${Math.round(topProject[1] * 10) / 10}h)`
+        : "N/A",
     };
   }, [entries]);
 
+  /* =============================
+     Card Configuration
+  ============================ */
   const summaryCards = [
     {
       label: "Total Hours",
@@ -106,33 +124,34 @@ const ReportSummary = ({ entries }) => {
     },
   ];
 
+  /* =============================
+     Render Modern Cards
+  ============================ */
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.5 }}
-      className="card"
+      transition={{ delay: 0.3 }}
+      className="space-y-5"
     >
-      <h3 className="text-base sm:text-lg font-semibold text-dark-text mb-4">
-        Summary Statistics
-      </h3>
+      <h3 className="text-lg font-semibold text-dark-text">Summary Statistics</h3>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-        {summaryCards.map((card, index) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {summaryCards.map((card, i) => (
           <motion.div
-            key={index}
+            key={i}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 + index * 0.05 }}
-            className="bg-dark-bg2 rounded-lg p-3 sm:p-4 border border-dark-border hover:border-primary/30 transition-colors"
+            transition={{ delay: 0.3 + i * 0.05 }}
+            className="bg-dark-bg2 rounded-xl p-4 border border-dark-border hover:border-primary/30 transition-all shadow-sm hover:shadow-md flex flex-col justify-between"
           >
-            <div className="flex items-start justify-between mb-2">
+            <div className="flex items-center justify-between mb-2">
               <p className="text-xs text-dark-muted">{card.label}</p>
-              <div className={`p-1.5 rounded-lg ${card.color}/10`}>
-                <card.icon className={`w-3.5 h-3.5 ${card.textColor}`} />
+              <div className={`p-2 rounded-lg ${card.color}/10`}>
+                <card.icon className={`w-5 h-5 ${card.textColor}`} />
               </div>
             </div>
-            <p className={`text-lg sm:text-xl font-bold ${card.textColor} mb-0.5 truncate`}>
+            <p className={`text-xl sm:text-2xl font-bold ${card.textColor} mb-1 truncate`}>
               {card.value}
             </p>
             <p className="text-xs text-dark-muted truncate">{card.subValue}</p>
