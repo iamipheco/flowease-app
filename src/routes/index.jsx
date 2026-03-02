@@ -49,6 +49,7 @@ const AppRoutes = () => {
         <Route path="/resend-verification" element={<PublicRoute><ResendVerification /></PublicRoute>} />
         <Route path="/auth/callback" element={<PublicRoute><OauthCallback /></PublicRoute>} />
 
+
       {/* Protected Dashboard Routes */}
       <Route path="/dashboard"element={ <ProtectedRoute> <DashboardLayout /> </ProtectedRoute>
         }
@@ -67,6 +68,7 @@ const AppRoutes = () => {
         <Route path="settings" element={<div className="p-8">Settings coming soon...</div>} />
         <Route path="insights" element={<div className="p-8">Insights coming soon...</div>} />
         <Route path="reporting" element={<div className="p-8">Reporting coming soon...</div>} />
+        <Route path="profile" element={<div className="p-8">Reporting coming soon...</div>} />
         <Route path="goals" element={<div className="p-8">Goals coming soon...</div>} />
         <Route path="inbox" element={<div className="p-8">Inbox coming soon...</div>} />
         <Route path="invite" element={<div className="p-8">Invite page coming soon...</div>} />
