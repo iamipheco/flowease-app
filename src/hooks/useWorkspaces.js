@@ -9,7 +9,9 @@ export const useWorkspaces = () => {
   const { user } = useAuthStore();
   const { activeWorkspace, setActiveWorkspace, setWorkspaces } = useWorkspaceStore();
 
-  // Get all workspaces
+  /* =============================
+     FETCH ALL WORKSPACES
+  ============================== */
   const {
     data: workspaces,
     isLoading,
@@ -17,28 +19,24 @@ export const useWorkspaces = () => {
   } = useQuery({
     queryKey: ['workspaces', user?._id],
     queryFn: async () => {
-      console.log('🔄 Fetching workspaces...');
       const response = await workspacesAPI.getAll();
       const workspacesList = Array.isArray(response.data) ? response.data : [];
-      
-      console.log('✅ Workspaces fetched:', workspacesList.length);
-      
-      // Store workspaces in zustand
+
       setWorkspaces(workspacesList);
-      
-      // If no active workspace, select first one
+
       if (!activeWorkspace && workspacesList.length > 0) {
-        console.log('📌 Auto-selecting first workspace:', workspacesList[0].name);
         setActiveWorkspace(workspacesList[0]);
       }
-      
+
       return workspacesList;
     },
     enabled: !!user?._id,
     staleTime: 5 * 60 * 1000,
   });
 
-  // Create workspace
+  /* =============================
+     CREATE WORKSPACE
+  ============================== */
   const createWorkspaceMutation = useMutation({
     mutationFn: workspacesAPI.create,
     onSuccess: (response) => {
@@ -51,14 +49,14 @@ export const useWorkspaces = () => {
     },
   });
 
-  // Update workspace
+  /* =============================
+     UPDATE WORKSPACE
+  ============================== */
   const updateWorkspaceMutation = useMutation({
     mutationFn: ({ id, data }) => workspacesAPI.update(id, data),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['workspaces'] });
-      if (activeWorkspace?._id === response.data._id) {
-        setActiveWorkspace(response.data);
-      }
+      if (activeWorkspace?._id === response.data._id) setActiveWorkspace(response.data);
       toast.success('Workspace updated');
     },
     onError: (error) => {
@@ -66,22 +64,35 @@ export const useWorkspaces = () => {
     },
   });
 
-  // Delete workspace
+  /* =============================
+     UPDATE WORKSPACE GOALS
+  ============================== */
+  const updateGoalsMutation = useMutation({
+    mutationFn: ({ id, dailyGoal, weeklyGoal }) =>
+      workspacesAPI.updateGoals(id, { dailyGoal, weeklyGoal }),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ['workspaces'] });
+      if (activeWorkspace?._id === response.data._id) setActiveWorkspace(response.data);
+      toast.success('Workspace goals updated');
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || 'Failed to update goals');
+    },
+  });
+
+  /* =============================
+     DELETE WORKSPACE
+  ============================== */
   const deleteWorkspaceMutation = useMutation({
     mutationFn: workspacesAPI.delete,
     onSuccess: (response, workspaceId) => {
       queryClient.invalidateQueries({ queryKey: ['workspaces'] });
-      
-      // If deleted active workspace, clear it
+
       if (activeWorkspace?._id === workspaceId) {
-        const remaining = workspaces?.filter(w => w._id !== workspaceId) || [];
-        if (remaining.length > 0) {
-          setActiveWorkspace(remaining[0]);
-        } else {
-          setActiveWorkspace(null);
-        }
+        const remaining = workspaces?.filter((w) => w._id !== workspaceId) || [];
+        setActiveWorkspace(remaining[0] || null);
       }
-      
+
       toast.success('Workspace deleted');
     },
     onError: (error) => {
@@ -89,27 +100,35 @@ export const useWorkspaces = () => {
     },
   });
 
-  // Switch workspace
+  /* =============================
+     SWITCH WORKSPACE
+  ============================== */
   const switchWorkspace = (workspaceId) => {
     const workspace = workspaces?.find((w) => w._id === workspaceId);
     if (workspace) {
-      console.log('🔄 Switching to:', workspace.name);
       setActiveWorkspace(workspace);
       toast.success(`Switched to ${workspace.name}`);
     }
   };
 
+  /* =============================
+     RETURN
+  ============================== */
   return {
     workspaces: Array.isArray(workspaces) ? workspaces : [],
     activeWorkspace,
+    dailyGoal: activeWorkspace?.dailyGoal ?? 8,
+    weeklyGoal: activeWorkspace?.weeklyGoal ?? 40,
     isLoading,
     error,
     createWorkspace: createWorkspaceMutation.mutate,
     updateWorkspace: updateWorkspaceMutation.mutate,
+    updateGoals: updateGoalsMutation.mutate, // <== new
     deleteWorkspace: deleteWorkspaceMutation.mutate,
     switchWorkspace,
     isCreating: createWorkspaceMutation.isPending,
     isUpdating: updateWorkspaceMutation.isPending,
+    isUpdatingGoals: updateGoalsMutation.isPending, // <== new
     isDeleting: deleteWorkspaceMutation.isPending,
   };
 };

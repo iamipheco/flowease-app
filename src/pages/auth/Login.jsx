@@ -6,6 +6,7 @@ import { z } from "zod";
 import { Mail, Lock, Eye, EyeOff, Chrome, Linkedin } from "lucide-react";
 import AuthLayout from "../../components/layout/AuthLayout";
 import { useAuth } from "../../hooks/useAuth";
+import { API_URL } from "../../utils/constants";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -27,6 +28,15 @@ const Login = () => {
   const onSubmit = (data) => {
     console.log('Submitting login:', data);
     login(data);
+  };
+
+  // OAuth handlers
+  const handleGoogleLogin = () => {
+    window.location.href = `${API_URL}/auth/google`;
+  };
+
+  const handleLinkedInLogin = () => {
+    window.location.href = `${API_URL}/auth/linkedin`;
   };
 
   return (
@@ -139,11 +149,19 @@ const Login = () => {
 
         {/* OAuth Buttons */}
         <div className="grid grid-cols-2 gap-3">
-          <button type="button" className="btn btn-secondary">
+          <button 
+            type="button" 
+            onClick={handleGoogleLogin}
+            className="btn btn-secondary"
+          >
             <Chrome className="w-5 h-5" />
             <span>Google</span>
           </button>
-          <button type="button" className="btn btn-secondary">
+          <button 
+            type="button" 
+            onClick={handleLinkedInLogin}
+            className="btn btn-secondary"
+          >
             <Linkedin className="w-5 h-5" />
             <span>LinkedIn</span>
           </button>

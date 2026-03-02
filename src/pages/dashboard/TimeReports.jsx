@@ -2,8 +2,7 @@ import { useState, useMemo } from "react";
 import { ArrowLeft, Download, FileText, Calendar as CalendarIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import DateRangePicker from "../../components/time/reports/DateRangePicker";
-import ReportFilters from "../../components/time/reports/ReportFilters";
+import ReportFilters from "../../components/time/reports/TimeReportFilterPanel";
 import AnalyticsCharts from "../../components/time/reports/AnalyticsCharts";
 import SessionsTable from "../../components/time/reports/SessionsTable";
 import ReportSummary from "../../components/time/reports/ReportSummary";
@@ -192,15 +191,6 @@ const TimeReports = () => {
 
       {/* Filters Section */}
       <div className="grid grid-cols-1 gap-4">
-        <DateRangePicker
-          dateRange={dateRange}
-          setDateRange={setDateRange}
-          customStartDate={customStartDate}
-          setCustomStartDate={setCustomStartDate}
-          customEndDate={customEndDate}
-          setCustomEndDate={setCustomEndDate}
-        />
-
         <ReportFilters
           selectedProject={selectedProject}
           setSelectedProject={setSelectedProject}

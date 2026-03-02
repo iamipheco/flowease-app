@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import AuthLayout from "../../components/layout/AuthLayout";
 import { useAuth } from "../../hooks/useAuth";
+import { API_URL } from "../../utils/constants";
 
 const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -58,6 +59,15 @@ const Register = () => {
   const onSubmit = (data) => {
     const { terms, ...userData } = data;
     registerUser(userData);
+  };
+
+  // OAuth handlers
+  const handleGoogleSignup = () => {
+    window.location.href = `${API_URL}/auth/google`;
+  };
+
+  const handleLinkedInSignup = () => {
+    window.location.href = `${API_URL}/auth/linkedin`;
   };
 
   return (
@@ -229,11 +239,19 @@ const Register = () => {
 
         {/* OAuth Buttons */}
         <div className="grid grid-cols-2 gap-3">
-          <button type="button" className="btn btn-secondary">
+          <button 
+            type="button" 
+            onClick={handleGoogleSignup}
+            className="btn btn-secondary"
+          >
             <Chrome className="w-5 h-5" />
             Google
           </button>
-          <button type="button" className="btn btn-secondary">
+          <button 
+            type="button" 
+            onClick={handleLinkedInSignup}
+            className="btn btn-secondary"
+          >
             <Linkedin className="w-5 h-5" />
             LinkedIn
           </button>
