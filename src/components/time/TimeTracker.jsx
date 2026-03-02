@@ -5,7 +5,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Play, Pause, Square, ChevronDown, FileText, X, Clock, Timer } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 import { useTasks } from '../../hooks/useTasks';
 import { useTimeEntries } from '../../hooks/useTimeEntries';
 import { useTimeTrackingStore } from '../../store/timeTrackingStore';

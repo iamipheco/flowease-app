@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import AuthLayout from "../../components/layout/AuthLayout";
 import { useAuthStore } from "../../store/authStore";
 
-const OAuthCallback = () => {
+const OauthCallback = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [error, setError] = useState(null);
@@ -156,4 +156,4 @@ const OAuthCallback = () => {
   );
 };
 
-export default OAuthCallback;
+export default OauthCallback;
