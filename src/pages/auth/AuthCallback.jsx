@@ -1,5 +1,5 @@
 /* ======================================================
-   src/pages/auth/OAuthCallback.jsx
+   src/pages/auth/AuthCallback.jsx
    OAuth Callback Handler - Google & LinkedIn
 ====================================================== */
 import { useEffect, useState } from "react";
@@ -9,17 +9,17 @@ import { toast } from "sonner";
 import AuthLayout from "../../components/layout/AuthLayout";
 import { useAuthStore } from "../../store/authStore";
 
-const OAuthCallback = () => {
+const AuthCallback = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [error, setError] = useState(null);
   const setAuth = useAuthStore((state) => state.setAuth);
 
   useEffect(() => {
-    handleOAuthCallback();
+    handleAuthCallback();
   }, []);
 
-  const handleOAuthCallback = async () => {
+  const handleAuthCallback = async () => {
     // Check for error in URL params
     const errorParam = searchParams.get("error");
     if (errorParam) {
@@ -156,4 +156,4 @@ const OAuthCallback = () => {
   );
 };
 
-export default OAuthCallback;
+export default AuthCallback;
