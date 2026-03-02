@@ -15,7 +15,7 @@ import ForgotPassword from "../pages/auth/ForgotPassword";
 import ResetPassword from "../pages/auth/ResetPassword";
 import VerifyEmail from "../pages/auth/VerifyEmail";
 import ResendVerification from "../pages/auth/ResendVerification";
-import OauthCallback from "../pages/auth/OauthCallback";
+import OAuthCallback from "../pages/auth/OauthCallback";
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
@@ -47,7 +47,7 @@ const AppRoutes = () => {
         <Route path="auth/reset-password/:token" element={<PublicRoute><ResetPassword /></PublicRoute>} />
         <Route path="auth/verify-email/:token" element={<PublicRoute><VerifyEmail /></PublicRoute>} />
         <Route path="/resend-verification" element={<PublicRoute><ResendVerification /></PublicRoute>} />
-        <Route path="/auth/callback" element={<PublicRoute><OauthCallback /></PublicRoute>} />
+        <Route path="/auth/callback" element={<PublicRoute><OAuthCallback /></PublicRoute>} />
 
 
       {/* Protected Dashboard Routes */}
